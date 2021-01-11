@@ -43,14 +43,22 @@ You should build OpenSolaris in advance.
 Get the source code of ARM Trusted Firmware.
 
 ```
-git clone -b osport/v2020.02 https://github.com/n-hys/arm-trusted-firmware.git
+git clone -b osport/v2020.06 https://github.com/n-hys/arm-trusted-firmware.git
 ```
 
 Refer to the following for building firmware.
 
 ```
+illumos_dir=${base_dir}/illumos-gate
+flash_bin=${base_dir}/flash.bin
+atf_dir=${base_dir}/arm-trusted-firmware
+bios_dir=${atf_dir}/build/qemu/debug
+
 CROSS_COMPILE=${illumos_dir}/usr/src/cross/bin/aarch64-solaris2.11- \
 	make -C ${atf_dir} -j DEBUG=1 PLAT=qemu ARM_LINUX_KERNEL_AS_BL33=1 PRELOADED_BL33_BASE=0x40100000 all fip
+
+dd if=${bios_dir}/bl1.bin of=${flash_bin} bs=4096 conv=notrunc
+dd if=${bios_dir}/fip.bin of=${flash_bin} seek=64 bs=4096 conv=notrunc
 ```
 
 ### Creating a disk image
@@ -63,14 +71,13 @@ qemu-img create -f raw disk.img 16G
 
 ```
 qemu_cmd=/usr/local/bin/qemu-system-aarch64
-bios_dir=${base_dir}/arm-trusted-firmware/build/qemu/debug
 illumos_dir=${base_dir}/illumos-gate
 disk_img=${base_dir}/disk.img
+flash_bin=${base_dir}/flash.bin
 
 sudo ${qemu_cmd} -nographic -machine virt,secure=on -m 1G -smp 4 \
 	-cpu cortex-a53 \
-	-bios ${bios_dir}/bl1.bin \
-	-device loader,file=${bios_dir}/fip.bin,addr=0x4000000 \
+	-bios ${flash_bin} \
 	-device loader,file=${illumos_dir}/usr/src/psm/stand/boot/aarch64/virt/inetboot.bin,addr=0x40100000 \
 	-append "-D /virtio_mmio@a003e00" \
 	-netdev bridge,id=net0,br=br1 \
@@ -171,14 +178,13 @@ The difference with the network boot is `-append "-D /virtio_mmio@a003c00"`.
 
 ```
 qemu_cmd=/usr/local/bin/qemu-system-aarch64
-bios_dir=${base_dir}/arm-trusted-firmware/build/qemu/debug
 illumos_dir=${base_dir}/illumos-gate
 disk_img=${base_dir}/disk.img
+flash_bin=${base_dir}/flash.bin
 
 sudo ${qemu_cmd} -nographic -machine virt,secure=on -m 1G -smp 4 \
 	-cpu cortex-a53 \
-	-bios ${bios_dir}/bl1.bin \
-	-device loader,file=${bios_dir}/fip.bin,addr=0x4000000 \
+	-bios ${flash_bin} \
 	-device loader,file=${illumos_dir}/usr/src/psm/stand/boot/aarch64/virt/inetboot.bin,addr=0x40100000 \
 	-append "-D /virtio_mmio@a003c00" \
 	-netdev bridge,id=net0,br=br1 \
